@@ -346,61 +346,30 @@ const handleLogin = async () => {
       password: form.password,
     });
 
-    await setAuth(
-      response.user,
-      {
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-      }
-    );
+    console.log("Login Response:", response);
 
-    Alert.alert(
-      "Success",
-      "Login Successful"
-    );
-
-    router.replace("/(drawer)/(tabs)");
-
-  } catch (error: any) {
+    await setAuth(response.user, {
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
+    });
 
     console.log(
-      "LOGIN ERROR:",
-      error?.response?.data
+      "Stored Token:",
+      useAuthStore.getState().accessToken
     );
 
-    const message =
-      error?.response?.data?.message ||
-      "Login failed";
+    Alert.alert("Success", "Login Successful");
 
-    if (
-      message
-        .toLowerCase()
-        .includes("verify")
-    ) {
-      Alert.alert(
-        "Email Verification",
-        "Please verify your email first.",
-        [
-          {
-            text: "OK",
-            onPress: () =>
-              router.push(
-                "/(auth)/email-verification"
-              ),
-          },
-        ]
-      );
-
-      return;
-    }
+    router.replace("/(drawer)/(tabs)");
+  } catch (error: any) {
+    console.log("LOGIN ERROR:", error);
 
     Alert.alert(
       "Login Failed",
-      message
+      error?.response?.data?.message || "Login failed"
     );
 
     triggerShake();
-
   } finally {
     setIsLoading(false);
   }

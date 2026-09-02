@@ -10,6 +10,7 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  Alert,
 } from "react-native";
 import Animated, {
   useSharedValue,
@@ -27,9 +28,14 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useRouter } from "expo-router";
-import { Bell } from "lucide-react-native";
+import { Bell, OptionIcon } from "lucide-react-native";
 import {useAuthStore} from "@/stores/auth.store";
-
+import {
+  useConversations,
+  useCreateDirectConversation,
+} from "../../../../backend/conversation/useConversations";
+import { conversationService } from "@/backend/conversation/conversation.service";
+import ChatScreen from "./[id]";
 
 const { width: W, height: H } = Dimensions.get("window");
 
@@ -54,117 +60,117 @@ const T = {
 };
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
-const CHATS = [
-  {
-    id: "1",
-    name: "Mr.Asif",
-    avatar: "A",
-    avatarColors: ["#6366F1", "#8B5CF6"] as [string, string],
-    message: "Heard you! Sending the file now 📎",
-    time: "now",
-    unread: 3,
-    online: true,
-    typing: true,
-    pinned: true,
-    eraSummary: "Discussed project deadline & file sharing",
-    muted: false,
-    verified: true,
-  },
-  {
-    id: "2",
-    name: "Aamir",
-    avatar: "DT",
-    avatarColors: ["#EC4899", "#F43F5E"] as [string, string],
-    message: "Maya: The new components look 🔥",
-    time: "2m",
-    unread: 12,
-    online: false,
-    typing: false,
-    pinned: true,
-    eraSummary: "Figma handoff & review session planned",
-    muted: false,
-    verified: false,
-    isGroup: true,
-    memberCount: 8,
-  },
-  {
-    id: "3",
-    name: "Era AI ✦",
-    avatar: "✦",
-    avatarColors: ["#312E81", "#DB2777"] as [string, string],
-    message: "I summarised your morning — 4 action items",
-    time: "9m",
-    unread: 1,
-    online: true,
-    typing: false,
-    pinned: false,
-    eraSummary: null,
-    muted: false,
-    verified: true,
-    isEra: true,
-  },
-  {
-    id: "4",
-    name: "Ashab",
-    avatar: "J",
-    avatarColors: ["#F59E0B", "#EF4444"] as [string, string],
-    message: "🎙️ Voice note · 0:24",
-    time: "34m",
-    unread: 0,
-    online: true,
-    typing: false,
-    pinned: false,
-    eraSummary: null,
-    muted: false,
-    verified: false,
-  },
-  {
-    id: "5",
-    name: "Tarannum",
-    avatar: "M",
-    avatarColors: ["#10B981", "#059669"] as [string, string],
-    message: "Can we reschedule to Thursday?",
-    time: "1h",
-    unread: 0,
-    online: false,
-    typing: false,
-    pinned: false,
-    eraSummary: null,
-    muted: true,
-    verified: false,
-  },
-  {
-    id: "6",
-    name: "Era Daily Digest",
-    avatar: "✦",
-    avatarColors: ["#4338CA", "#7C3AED"] as [string, string],
-    message: "Your 8 AM brief is ready to read",
-    time: "8h",
-    unread: 0,
-    online: false,
-    typing: false,
-    pinned: false,
-    eraSummary: null,
-    muted: false,
-    verified: true,
-    isEra: true,
-  },
-  {
-    id: "7",
-    name: "Sam Rivera",
-    avatar: "S",
-    avatarColors: ["#0EA5E9", "#6366F1"] as [string, string],
-    message: "Thanks! Talk soon 👋",
-    time: "Yesterday",
-    unread: 0,
-    online: false,
-    typing: false,
-    pinned: false,
-    eraSummary: null,
-    muted: false,
-    verified: false,
-  },
-];
+// const CHATS = [
+//   {
+//     id: "1",
+//     name: "Mr.Asif",
+//     avatar: "A",
+//     avatarColors: ["#6366F1", "#8B5CF6"] as [string, string],
+//     message: "Heard you! Sending the file now 📎",
+//     time: "now",
+//     unread: 3,
+//     online: true,
+//     typing: true,
+//     pinned: true,
+//     eraSummary: "Discussed project deadline & file sharing",
+//     muted: false,
+//     verified: true,
+//   },
+//   {
+//     id: "2",
+//     name: "Aamir",
+//     avatar: "DT",
+//     avatarColors: ["#EC4899", "#F43F5E"] as [string, string],
+//     message: "Maya: The new components look 🔥",
+//     time: "2m",
+//     unread: 12,
+//     online: false,
+//     typing: false,
+//     pinned: true,
+//     eraSummary: "Figma handoff & review session planned",
+//     muted: false,
+//     verified: false,
+//     isGroup: true,
+//     memberCount: 8,
+//   },
+//   {
+//     id: "3",
+//     name: "Era AI ✦",
+//     avatar: "✦",
+//     avatarColors: ["#312E81", "#DB2777"] as [string, string],
+//     message: "I summarised your morning — 4 action items",
+//     time: "9m",
+//     unread: 1,
+//     online: true,
+//     typing: false,
+//     pinned: false,
+//     eraSummary: null,
+//     muted: false,
+//     verified: true,
+//     isEra: true,
+//   },
+//   {
+//     id: "4",
+//     name: "Ashab",
+//     avatar: "J",
+//     avatarColors: ["#F59E0B", "#EF4444"] as [string, string],
+//     message: "🎙️ Voice note · 0:24",
+//     time: "34m",
+//     unread: 0,
+//     online: true,
+//     typing: false,
+//     pinned: false,
+//     eraSummary: null,
+//     muted: false,
+//     verified: false,
+//   },
+//   {
+//     id: "5",
+//     name: "Tarannum",
+//     avatar: "M",
+//     avatarColors: ["#10B981", "#059669"] as [string, string],
+//     message: "Can we reschedule to Thursday?",
+//     time: "1h",
+//     unread: 0,
+//     online: false,
+//     typing: false,
+//     pinned: false,
+//     eraSummary: null,
+//     muted: true,
+//     verified: false,
+//   },
+//   {
+//     id: "6",
+//     name: "Era Daily Digest",
+//     avatar: "✦",
+//     avatarColors: ["#4338CA", "#7C3AED"] as [string, string],
+//     message: "Your 8 AM brief is ready to read",
+//     time: "8h",
+//     unread: 0,
+//     online: false,
+//     typing: false,
+//     pinned: false,
+//     eraSummary: null,
+//     muted: false,
+//     verified: true,
+//     isEra: true,
+//   },
+//   {
+//     id: "7",
+//     name: "Sam Rivera",
+//     avatar: "S",
+//     avatarColors: ["#0EA5E9", "#6366F1"] as [string, string],
+//     message: "Thanks! Talk soon 👋",
+//     time: "Yesterday",
+//     unread: 0,
+//     online: false,
+//     typing: false,
+//     pinned: false,
+//     eraSummary: null,
+//     muted: false,
+//     verified: false,
+//   },
+// ];
 
 const FILTERS = ["All", "Unread", "Groups", "Era AI", "Pinned"];
 
@@ -300,6 +306,18 @@ const ChatRow: React.FC<{
   const scaleStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(pressed.value, [0, 1], [1, 0.98], Extrapolation.CLAMP) }],
   }));
+  const handleDeleteById = async (id: string) => {
+  try {
+    await conversationService.remove(id);
+
+    // Refresh the list
+
+    Alert.alert("Success", "Conversation deleted");
+  } catch (error) {
+    console.error(error);
+    Alert.alert("Error", "Failed to delete conversation");
+  }
+};
 
   return (
     <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
@@ -365,6 +383,9 @@ const ChatRow: React.FC<{
                 )}
               </View>
             </View>
+            <TouchableOpacity onPress={()=>handleDeleteById(chat.id)} >
+              <OptionIcon size={40} color="rgba(241,245,249,0.4)" />
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </Animated.View>
@@ -405,11 +426,13 @@ const EraFAB: React.FC = () => {
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
 
   const OPTIONS = [
-    { icon: "✦", label: "Ask Era", color: ["#312E81", "#6366F1"] as [string, string] },
-    { icon: "👥", label: "New Group", color: ["#7C3AED", "#6366F1"] as [string, string] },
-    { icon: "✉️", label: "New Chat", color: ["#4338CA", "#6366F1"] as [string, string] },
+    // { icon: "✦", label: "Ask Era", color: ["#312E81", "#6366F1"] as [string, string],link:"" },
+    { icon: "👥", label: "New", color: ["#7C3AED", "#6366F1"] as [string, string],link:"/chats/newbyEmail" },
+    // { icon: "✉️", label: "New Chat by contact", color: ["#4338CA", "#6366F1"] as [string, string],link:"/chats/Contactscreen" },
   ];
-
+  const handlePress = (link: string) => {
+    router.push(link);
+  }
   return (
     <View style={s.fabWrap}>
       {expanded && (
@@ -418,7 +441,7 @@ const EraFAB: React.FC = () => {
       {/* Options */}
       {OPTIONS.map((o, i) => (
         <Animated.View key={o.label} style={[s.fabOption, optionStyle(i), { bottom: 80 + i * 64 }]}>
-          <TouchableOpacity style={s.fabOptionBtn} onPress={toggle}>
+          <TouchableOpacity style={s.fabOptionBtn} onPress={() => handlePress(o.link)}>
             <LinearGradient colors={o.color} style={s.fabOptionGrad}>
               <Text style={s.fabOptionIcon}>{o.icon}</Text>
             </LinearGradient>
@@ -575,18 +598,115 @@ export default function ChatsScreen() {
   const headerY = useSharedValue(-20);
   const headerO = useSharedValue(0);
   const router = useRouter();  
-
+  const [CHATS, setChats] = useState<any[]>([]);
 //checking authentication state
   const { isAuthenticated, isHydrated, user } = useAuthStore();
 
 useEffect(() => {
-  console.log("User:", user);
-  console.log("Hydrated:", isHydrated);
-  console.log("Authenticated:", isAuthenticated);
-}, [user, isHydrated, isAuthenticated]);
   
+}, [user, isHydrated, isAuthenticated]);
+ const {
+    data: conversations = [],
+    isLoading,
+    refetch,
+  } = useConversations(); 
+
+  //backend
+   const handleGetConversations = async () => {
+  try {
+    const result = await refetch();
+
+    if (!result.data) return;
+
+    const currentUserId = useAuthStore.getState().user?.id;
+
+    const mappedChats = result.data.map((conversation) => {
+      const otherMember =
+        conversation.type === "DIRECT"
+          ? conversation.members.find(
+              (member) => member.userId !== currentUserId
+            )
+          : null;
+
+      return {
+        id: conversation.id,
+
+        name:
+          conversation.type === "GROUP"
+            ? conversation.name
+            : otherMember?.fullName ?? "Unknown User",
+
+        avatar:
+          `${otherMember?.fullName?.charAt(0).toUpperCase()}${otherMember?.fullName?.charAt(1).toLowerCase()}` ?? "U",
+
+        avatarUrl: otherMember?.avatarUrl,
+
+        avatarColors: ["#6366F1", "#8B5CF6"] as [string, string],
+
+        message:
+          conversation.lastMessage?.text ??
+          "Start your conversation",
+
+        time: conversation.lastMessage
+          ? new Date(
+              conversation.lastMessage.timestamp
+            ).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "",
+
+        unread: 0,
+
+        online: false,
+
+        typing: false,
+
+        pinned: false,
+
+        muted: false,
+
+        verified: false,
+
+        eraSummary: null,
+
+        isGroup: conversation.type === "GROUP",
+
+        memberCount: conversation.members.length,
+
+        conversation,
+      };
+    });
+
+    setChats(mappedChats);
+
+    
+  } catch (error) {
+    console.log(error);
+    Alert.alert("Error", "Failed to fetch conversations");
+  }
+};
+
+  // ============================
+  // HANDLE GET BY ID
+  // ============================
 
 
+
+
+useEffect(() => {
+  if (!isAuthenticated && isHydrated) {
+    router.replace("/(auth)/login");
+  }
+handleGetConversations();
+}, [user,isAuthenticated, isHydrated, router]);
+
+
+
+ 
+
+
+//backend end
 
   useEffect(() => {
     headerY.value = withSpring(0, { damping: 16, stiffness: 120 });

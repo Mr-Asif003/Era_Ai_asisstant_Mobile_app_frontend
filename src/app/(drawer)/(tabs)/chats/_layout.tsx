@@ -12,6 +12,7 @@ export default function ChatsLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="[id]" />
+      <Stack.Screen name="Contactscreen" />
     </Stack>
   );
 }

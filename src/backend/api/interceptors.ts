@@ -3,7 +3,7 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 
-import { api } from "./client";
+import api  from "../api/client";
 
 import { API_BASE_URL } from "@/lib/constants";
 import { storage } from "@/lib/storage";

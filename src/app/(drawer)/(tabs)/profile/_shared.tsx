@@ -36,7 +36,7 @@ export const C = {
 
 // ─── Sub-screen header (used on every nested settings screen) ────────────────
 
-export const SubHeader: React.FC<{
+export   const SubHeader: React.FC<{
   title: string;
   onBack: () => void;
   rightAction?: { label: string; onPress: () => void };

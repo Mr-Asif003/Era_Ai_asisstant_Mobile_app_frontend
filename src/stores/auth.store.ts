@@ -8,16 +8,15 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
-  isHydrated: boolean; // true once AsyncStorage has been read
+  isHydrated: boolean;
 
-  // Actions
   setAuth: (user: User, tokens: AuthTokens) => Promise<void>;
   updateTokens: (tokens: AuthTokens) => Promise<void>;
   logout: () => Promise<void>;
   hydrate: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   accessToken: null,
   refreshToken: null,
@@ -30,11 +29,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       storage.set(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken),
       storage.set(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken),
     ]);
+
     set({
       user,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-      isAuthenticated: true,
+      isAuthenticated: !!(user && tokens.accessToken),
     });
   },
 
@@ -43,10 +43,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       storage.set(STORAGE_KEYS.ACCESS_TOKEN, tokens.accessToken),
       storage.set(STORAGE_KEYS.REFRESH_TOKEN, tokens.refreshToken),
     ]);
-    set({
+
+    set((state) => ({
+      ...state,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-    });
+      isAuthenticated: !!(state.user && tokens.accessToken),
+    }));
   },
 
   logout: async () => {
@@ -55,11 +58,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       storage.remove(STORAGE_KEYS.ACCESS_TOKEN),
       storage.remove(STORAGE_KEYS.REFRESH_TOKEN),
     ]);
+
     set({
       user: null,
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
+      isHydrated: true,
     });
   },
 
@@ -85,3 +90,6 @@ export const getAccessToken = () =>
 
 export const getRefreshToken = () =>
   useAuthStore.getState().refreshToken;
+
+export const getUser = () =>
+  useAuthStore.getState().user;
