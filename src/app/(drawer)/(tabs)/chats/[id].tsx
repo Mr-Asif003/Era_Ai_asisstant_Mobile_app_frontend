@@ -29,7 +29,12 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS } from "@/lib/constants";
 import { MessageService } from "@/backend/message/message.service";
-import { connectSocket, subscribeToMessages, subscribeToDelivery } from "@/backend/message/socket";
+import {
+  connectSocket,
+  subscribeToMessages,
+  subscribeToDelivery,
+  isSocketConnected,
+} from "@/backend/message/socket";
 import { conversationService } from "@/backend/conversation/conversation.service";
 // ASSUMPTION: adjust this import to wherever your auth/user store actually lives.
 // It just needs to expose the logged-in user's id so we know which messages are "mine".
@@ -446,61 +451,167 @@ useEffect(() => {
 
   // TODO: subscribe to the STOMP topic for this conversation here and merge
   // incoming messages into `messages` (dedupe by id, update status on receipts).
-  useEffect(() => {
-    let unsubMessages: (() => void) | undefined;
-    let unsubDelivery: (() => void) | undefined;
-    let cancelled = false;
+ useEffect(() => {
+  let unsubMessages: (() => void) | undefined;
+  let unsubDelivery: (() => void) | undefined;
 
-    (async () => {
-      try {
-        console.log("[chat] attempting connectSocket()");
-        await connectSocket();
-        console.log("[chat] connectSocket() resolved, subscribing...");
-        if (cancelled) return;
+  let cancelled = false;
 
-        unsubMessages = subscribeToMessages((incoming) => {
-  console.log("[chat] RAW message from socket:", incoming, "| expecting conversationId:", id);
-  if (incoming.conversationId !== id) {
-    console.log("[chat] ⚠️ filtered out — conversationId mismatch");
-    return;
-  }
-  console.log("[chat] ✅ matched, adding to messages");
+  async function setupSocket() {
+    try {
+      console.log("======================================");
+      console.log("🔵 CHAT SOCKET SETUP");
+      console.log("======================================");
 
-  setMessages((prev) => {
-    if (prev.some((m) => m.id === incoming.id)) return prev;
-    return [
-      ...prev,
-      {
-        id: incoming.id,
-        text: incoming.content,
-        senderId: incoming.senderId === currentUserId ? "me" : incoming.senderId,
-        timestamp: incoming.createdAt,
-        status: (incoming.status?.toLowerCase() as MessageStatus) ?? "delivered",
-      },
-    ];
-  });
-});
+      // 1. CONNECT
+      console.log("1️⃣ Connecting STOMP...");
 
-        unsubDelivery = subscribeToDelivery((receipt) => {
+      await connectSocket();
+
+      console.log(
+        "2️⃣ connectSocket() resolved"
+      );
+
+      // Component may have unmounted while connecting
+      if (cancelled) {
+        console.log(
+          "⚠️ Chat screen cancelled"
+        );
+        return;
+      }
+
+      // 2. VERIFY CONNECTION
+      const connected = isSocketConnected();
+
+      console.log(
+        "3️⃣ Socket connected:",
+        connected
+      );
+
+      if (!connected) {
+        throw new Error(
+          "connectSocket() resolved but STOMP is not connected"
+        );
+      }
+
+      // 3. SUBSCRIBE TO MESSAGES
+      console.log(
+        "4️⃣ Subscribing to messages..."
+      );
+
+      unsubMessages =
+        subscribeToMessages((incoming) => {
+          console.log(
+            "📨 Incoming message:",
+            incoming
+          );
+
+          if (
+            incoming.conversationId !== id
+          ) {
+            console.log(
+              "⚠️ Ignoring message from another conversation"
+            );
+
+            return;
+          }
+
+          setMessages((prev) => {
+            // Prevent duplicate messages
+            if (
+              prev.some(
+                (message) =>
+                  message.id === incoming.id
+              )
+            ) {
+              return prev;
+            }
+
+            return [
+              ...prev,
+              {
+                id: incoming.id,
+                text: incoming.content,
+
+                senderId:
+                  incoming.senderId ===
+                  currentUserId
+                    ? "me"
+                    : incoming.senderId,
+
+                timestamp:
+                  incoming.createdAt,
+
+                status:
+                  (incoming.status?.toLowerCase() as MessageStatus) ??
+                  "delivered",
+              },
+            ];
+          });
+        });
+
+      // 4. SUBSCRIBE TO DELIVERY
+      console.log(
+        "5️⃣ Subscribing to delivery..."
+      );
+
+      unsubDelivery =
+        subscribeToDelivery((receipt) => {
+          console.log(
+            "📬 Delivery receipt:",
+            receipt
+          );
+
           setMessages((prev) =>
-            prev.map((m) =>
-              m.id === receipt.messageId
-                ? { ...m, status: receipt.status.toLowerCase() as MessageStatus }
-                : m
+            prev.map((message) =>
+              message.id ===
+              receipt.messageId
+                ? {
+                    ...message,
+
+                    status:
+                      receipt.status.toLowerCase() as MessageStatus,
+                  }
+                : message
             )
           );
         });
-      } catch (err) {
-        console.log("Socket connect failed:", err);
-      }
-    })();
 
-    return () => {
-      cancelled = true;
-      unsubMessages?.();
-      unsubDelivery?.();
-    };
-  }, [id]);
+      console.log(
+        "======================================"
+      );
+
+      console.log(
+        "✅ CHAT SOCKET SETUP COMPLETE"
+      );
+
+      console.log(
+        "======================================");
+    } catch (error) {
+      console.error(
+        "❌ CHAT SOCKET SETUP FAILED:",
+        error
+      );
+    }
+  }
+
+  setupSocket();
+
+  return () => {
+    console.log(
+      "🧹 ChatScreen socket cleanup"
+    );
+
+    cancelled = true;
+
+    unsubMessages?.();
+    unsubDelivery?.();
+
+    // ❌ DO NOT DO THIS HERE
+    //
+    // disconnectSocket();
+  };
+}, [id, currentUserId]);
 
 
 

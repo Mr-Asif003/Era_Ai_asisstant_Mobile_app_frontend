@@ -35,6 +35,7 @@ import {
   useCreateDirectConversation,
 } from "../../../../backend/conversation/useConversations";
 import { conversationService } from "@/backend/conversation/conversation.service";
+import { subscribeToMessages } from "@/backend/message/socket";
 import ChatScreen from "./[id]";
 
 const { width: W, height: H } = Dimensions.get("window");
@@ -700,6 +701,48 @@ useEffect(() => {
   }
 handleGetConversations();
 }, [user,isAuthenticated, isHydrated, router]);
+
+// ============================
+// LIVE UPDATES
+// ============================
+// The socket connection itself is opened app-wide in AppProvider once the
+// user is authenticated, so by the time this screen mounts it's already
+// connected (or connecting) — this just adds a listener on top of it.
+// Every incoming message bumps that conversation's preview/time and moves
+// it to the top of the list, the same way a reload would, but live. If the
+// message belongs to a conversation we don't have yet (a brand new chat),
+// fall back to a full refetch so the new thread appears.
+useEffect(() => {
+  if (!isAuthenticated) return;
+
+  const unsubscribe = subscribeToMessages((incoming) => {
+    setChats((prev) => {
+      const idx = prev.findIndex((c) => c.id === incoming.conversationId);
+      if (idx === -1) {
+        // Unknown conversation (e.g. first message of a brand-new chat) —
+        // pull the fresh list instead of guessing at its shape here.
+        handleGetConversations();
+        return prev;
+      }
+
+      const updated = {
+        ...prev[idx],
+        message: incoming.content,
+        time: new Date(incoming.createdAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      };
+
+      const next = [...prev];
+      next.splice(idx, 1);
+      next.unshift(updated);
+      return next;
+    });
+  });
+
+  return unsubscribe;
+}, [isAuthenticated]);
 
 
 
